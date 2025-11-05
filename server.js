@@ -6,7 +6,7 @@ const path = require('path');
 
 // Configuration - CHANGE THESE!
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || '8276842153:AAF9BCMLa_b-Zpo-YdKl1HDbsIS4kqVKRuk';
-const WEBAPP_URL = process.env.WEBAPP_URL || 'https://hack-roan-xi.vercel.app';
+const WEBAPP_URL = process.env.WEBAPP_URL || 'https://hack-edso.onrender.com';
 const PORT = process.env.PORT || 3000;
 
 // Initialize
